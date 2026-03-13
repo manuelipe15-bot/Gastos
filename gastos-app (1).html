@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Gastos">
+<meta name="theme-color" content="#0f1923">
+<title>Gastos 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0f1923; --bg2:#162030; --bg3:#1e2d40;
+    --card:#192638; --border:#2a3f57;
+    --accent:#00d4aa; --accent2:#0099ff;
+    --danger:#ff4f6d; --warn:#ffb930;
+    --text:#e8f0f8; --muted:#6a8aaa;
+    --mono:'DM Mono',monospace; --sans:'Syne',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--mono);overflow:hidden;position:fixed;width:100%}
+  .app{height:100%;display:flex;flex-direction:column;max-width:430px;margin:0 auto}
+
+  .header{padding-top:max(env(safe-area-inset-top),50px);background:var(--bg);z-index:10}
+  .header-inner{display:flex;align-items:center;justify-content:space-between;padding:0 20px 12px;border-bottom:1px solid var(--border)}
+  .app-title{font-family:var(--sans);font-size:22px;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .records-badge{font-size:11px;color:var(--muted);background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:4px 10px}
+
+  .tabs{display:flex;gap:4px;padding:10px 20px 0;background:var(--bg)}
+  .tab{flex:1;padding:8px 4px;text-align:center;font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:.3px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all .2s;text-transform:uppercase}
+  .tab.active{background:var(--accent);color:#0f1923;border-color:var(--accent)}
+
+  .screen{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:14px 20px;padding-bottom:calc(env(safe-area-inset-bottom) + 20px)}
+  .screen.hidden{display:none}
+
+  .amount-block{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:18px 20px;margin-bottom:12px;text-align:center;position:relative;overflow:hidden}
+  .amount-block::before{content:'';position:absolute;top:-30px;right:-30px;width:100px;height:100px;border-radius:50%;background:radial-gradient(circle,rgba(0,212,170,.12),transparent 70%);pointer-events:none}
+  .amount-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+  .amount-input-wrap{display:flex;align-items:center;justify-content:center;gap:4px}
+  .currency-sign{font-family:var(--sans);font-size:22px;font-weight:700;color:var(--muted)}
+  .amount-input{font-family:var(--sans);font-size:36px;font-weight:800;background:transparent;border:none;outline:none;color:var(--text);text-align:center;width:200px;caret-color:var(--accent)}
+  .amount-input::placeholder{color:var(--border)}
+
+  .type-toggle{display:flex;gap:8px;margin-bottom:12px}
+  .type-btn{flex:1;padding:11px;border-radius:14px;border:2px solid var(--border);background:transparent;font-family:var(--sans);font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;transition:all .2s}
+  .type-btn.active-egreso{background:rgba(255,79,109,.15);border-color:var(--danger);color:var(--danger)}
+  .type-btn.active-ingreso{background:rgba(0,212,170,.15);border-color:var(--accent);color:var(--accent)}
+
+  .field{margin-bottom:10px}
+  .field label{display:block;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;padding-left:4px}
+  .field select,.field input[type=text],.field input[type=date]{width:100%;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px 16px;font-family:var(--mono);font-size:14px;color:var(--text);outline:none;appearance:none;-webkit-appearance:none;transition:border-color .2s}
+  .field select:focus,.field input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,212,170,.08)}
+  .field select option{background:var(--bg3)}
+  .select-wrap{position:relative}
+  .select-wrap::after{content:'▾';position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;font-size:12px}
+  .row-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+  .subcat-pills{display:none;flex-wrap:wrap;gap:6px}
+  .subcat-pills.visible{display:flex}
+  .pill{padding:6px 12px;border-radius:30px;border:1px solid var(--border);font-size:11px;color:var(--muted);background:var(--card);cursor:pointer;transition:all .18s;white-space:nowrap}
+  .pill.active{background:rgba(0,153,255,.18);border-color:var(--accent2);color:var(--accent2)}
+
+  .submit-btn{width:100%;padding:15px;border-radius:16px;border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));font-family:var(--sans);font-size:16px;font-weight:800;color:#0f1923;cursor:pointer;margin-top:4px;transition:transform .15s,opacity .15s}
+  .submit-btn:active{transform:scale(.97);opacity:.9}
+
+  .toast{position:fixed;top:max(env(safe-area-inset-top),20px);left:50%;transform:translateX(-50%) translateY(-80px);background:var(--accent);color:#0f1923;font-family:var(--sans);font-weight:700;font-size:13px;padding:11px 22px;border-radius:40px;z-index:999;transition:transform .3s cubic-bezier(.34,1.56,.64,1);white-space:nowrap}
+  .toast.show{transform:translateX(-50%) translateY(0)}
+  .toast.error{background:var(--danger);color:#fff}
+
+  .month-filter{margin-bottom:12px}
+  .month-filter select{width:100%;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:11px 16px;font-family:var(--mono);font-size:13px;color:var(--text);outline:none;appearance:none;-webkit-appearance:none}
+  .totals-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+  .total-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:13px 15px}
+  .total-card .tc-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px}
+  .tc-val{font-family:var(--sans);font-size:17px;font-weight:800}
+  .tc-val.green{color:var(--accent)}
+  .tc-val.red{color:var(--danger)}
+  .record-list{display:flex;flex-direction:column;gap:8px}
+  .record-item{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:13px 15px;display:flex;align-items:center;gap:11px;animation:slideIn .22s ease-out}
+  @keyframes slideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  .record-icon{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+  .record-icon.egreso{background:rgba(255,79,109,.15)}
+  .record-icon.ingreso{background:rgba(0,212,170,.15)}
+  .record-info{flex:1;min-width:0}
+  .record-concepto{font-family:var(--sans);font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .record-meta{font-size:11px;color:var(--muted);margin-top:2px}
+  .record-amount{font-family:var(--sans);font-size:15px;font-weight:800;flex-shrink:0}
+  .record-amount.egreso{color:var(--danger)}
+  .record-amount.ingreso{color:var(--accent)}
+  .record-del{background:none;border:none;color:var(--muted);font-size:15px;cursor:pointer;padding:4px;flex-shrink:0}
+  .empty-state{text-align:center;padding:40px 20px;color:var(--muted)}
+  .empty-state .es-icon{font-size:38px;margin-bottom:10px}
+  .empty-state p{font-size:13px;line-height:1.7}
+
+  /* EXPORT */
+  .export-card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:18px;margin-bottom:12px}
+  .export-card-title{font-family:var(--sans);font-size:13px;font-weight:700;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+  .export-card-title span{font-size:18px}
+  .export-btn{width:100%;padding:14px;border-radius:14px;border:2px solid var(--accent);background:transparent;font-family:var(--sans);font-size:14px;font-weight:700;color:var(--accent);cursor:pointer;letter-spacing:.3px;transition:all .2s;margin-bottom:8px;display:block}
+  .export-btn:last-child{margin-bottom:0}
+  .export-btn:active{background:rgba(0,212,170,.1)}
+  .export-btn.email{border-color:var(--accent2);color:var(--accent2)}
+  .export-btn.email:active{background:rgba(0,153,255,.1)}
+  .export-btn.danger-btn{border-color:rgba(255,79,109,.4);color:var(--danger);background:rgba(255,79,109,.05);margin-bottom:0}
+  .export-hint{font-size:11px;color:var(--muted);line-height:1.7;margin-top:8px}
+  .export-hint strong{color:var(--accent)}
+
+  .email-row{display:flex;gap:8px;margin-bottom:10px}
+  .email-input{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:11px 14px;font-family:var(--mono);font-size:13px;color:var(--text);outline:none}
+  .email-input:focus{border-color:var(--accent2)}
+  .email-save-btn{padding:11px 14px;border-radius:12px;border:1px solid var(--accent2);background:rgba(0,153,255,.1);color:var(--accent2);font-family:var(--sans);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
+
+  .instructions{background:var(--bg3);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:12px}
+  .inst-title{font-family:var(--sans);font-size:12px;font-weight:700;margin-bottom:12px;color:var(--text)}
+  .step{display:flex;gap:10px;margin-bottom:10px;align-items:flex-start}
+  .step:last-child{margin-bottom:0}
+  .step-num{width:22px;height:22px;border-radius:50%;background:var(--accent);color:#0f1923;font-family:var(--sans);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+  .step-text{font-size:12px;color:var(--muted);line-height:1.6}
+  .step-text strong{color:var(--text)}
+
+  /* MODAL */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:100;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s}
+  .modal-overlay.show{opacity:1;pointer-events:all}
+  .modal{background:var(--bg2);border:1px solid var(--border);border-radius:24px 24px 0 0;padding:24px 24px calc(env(safe-area-inset-bottom) + 24px);width:100%;max-width:430px;transform:translateY(100%);transition:transform .3s cubic-bezier(.34,1.2,.64,1)}
+  .modal-overlay.show .modal{transform:translateY(0)}
+  .modal-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 20px}
+  .modal-title{font-family:var(--sans);font-size:18px;font-weight:800;margin-bottom:8px}
+  .modal-sub{font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:20px}
+  .modal-stats{background:var(--bg3);border-radius:14px;padding:14px;margin-bottom:20px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .stat-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+  .stat-val{font-family:var(--sans);font-size:18px;font-weight:800;color:var(--accent);margin-top:2px}
+  .modal-btn{width:100%;padding:15px;border-radius:14px;border:none;font-family:var(--sans);font-size:15px;font-weight:800;cursor:pointer;margin-bottom:8px;transition:opacity .15s}
+  .modal-btn:active{opacity:.85}
+  .modal-btn:last-child{margin-bottom:0}
+  .modal-btn.confirm{background:linear-gradient(135deg,var(--danger),#c0392b);color:#fff}
+  .modal-btn.cancel{background:var(--bg3);color:var(--muted);border:1px solid var(--border)}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="header-inner">
+      <span class="app-title">$ Gastos</span>
+      <span class="records-badge" id="badgeCount">0 registros</span>
+    </div>
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('form')">+ Nuevo</button>
+      <button class="tab" onclick="switchTab('records')">Registros</button>
+      <button class="tab" onclick="switchTab('export')">Exportar</button>
+    </div>
+  </div>
+
+  <!-- FORM -->
+  <div class="screen" id="tab-form">
+    <div class="amount-block">
+      <div class="amount-label">Monto (COP)</div>
+      <div class="amount-input-wrap">
+        <span class="currency-sign">$</span>
+        <input class="amount-input" type="number" id="fMonto" placeholder="0" inputmode="numeric">
+      </div>
+    </div>
+    <div class="type-toggle">
+      <button class="type-btn active-egreso" id="btnEgreso" onclick="setTipo('Egreso')">📤 Egreso</button>
+      <button class="type-btn" id="btnIngreso" onclick="setTipo('Ingreso')">📥 Ingreso</button>
+    </div>
+    <div class="field">
+      <label>Fecha</label>
+      <input type="date" id="fFecha">
+    </div>
+    <div class="row-2">
+      <div class="field">
+        <label>Categoría</label>
+        <div class="select-wrap"><select id="fCategoria" onchange="onCatChange()"><option value="">— elegir —</option></select></div>
+      </div>
+      <div class="field">
+        <label>Bolsillo</label>
+        <div class="select-wrap">
+          <select id="fLugar">
+            <option value="">— elegir —</option>
+            <option>Tarjeta credito</option>
+            <option>Nequi</option>
+            <option>Efectivo</option>
+            <option>Cuenta ahorros </option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="field" id="subcatField" style="display:none">
+      <label>Subcategoría</label>
+      <div class="subcat-pills visible" id="subcatPills">
+        <span class="pill" onclick="setPill(this,'Restaurantes / Domicilios')">🍽 Restaurantes</span>
+        <span class="pill" onclick="setPill(this,'Restaurantes / Domicilios')">🛵 Domicilio</span>
+        <span class="pill" onclick="setPill(this,'Cine / Teatro')">🎬 Cine</span>
+        <span class="pill" onclick="setPill(this,'Gym / Bienestar')">💪 Gym</span>
+        <span class="pill" onclick="setPill(this,'Familia / Social')">👨‍👩‍👧 Familia</span>
+        <span class="pill" onclick="setPill(this,'Viajes / Eventos')">✈️ Viaje</span>
+        <span class="pill" onclick="setPill(this,'Suscripciones')">📱 Suscripción</span>
+        <span class="pill" onclick="setPill(this,'Otro')">• Otro</span>
+      </div>
+      <input type="hidden" id="fSubcat" value="">
+    </div>
+    <div class="field">
+      <label>Concepto</label>
+      <input type="text" id="fConcepto" placeholder="ej: Cine, Gasolina, Almuerzo..." autocomplete="off">
+    </div>
+    <div class="field">
+      <label>Notas (opcional)</label>
+      <input type="text" id="fNotas" placeholder="comentario libre..." autocomplete="off">
+    </div>
+    <button class="submit-btn" onclick="guardarRegistro()">Guardar registro →</button>
+  </div>
+
+  <!-- RECORDS -->
+  <div class="screen hidden" id="tab-records">
+    <div class="month-filter">
+      <div class="select-wrap">
+        <select id="filterMes" onchange="renderRecords()">
+          <option value="">Todos los meses</option>
+          <option value="01">Enero</option><option value="02">Febrero</option>
+          <option value="03">Marzo</option><option value="04">Abril</option>
+          <option value="05">Mayo</option><option value="06">Junio</option>
+          <option value="07">Julio</option><option value="08">Agosto</option>
+          <option value="09">Septiembre</option><option value="10">Octubre</option>
+          <option value="11">Noviembre</option><option value="12">Diciembre</option>
+        </select>
+      </div>
+    </div>
+    <div class="totals-row">
+      <div class="total-card"><div class="tc-label">Ingresos</div><div class="tc-val green" id="totalIngresos">$0</div></div>
+      <div class="total-card"><div class="tc-label">Egresos</div><div class="tc-val red" id="totalEgresos">$0</div></div>
+    </div>
+    <div class="record-list" id="recordList"></div>
+  </div>
+
+  <!-- EXPORT -->
+  <div class="screen hidden" id="tab-export">
+
+    <div class="export-card">
+      <div class="export-card-title"><span>📧</span> Enviar al correo</div>
+      <div class="field" style="margin-bottom:10px">
+        <label>Tu correo</label>
+        <div class="email-row">
+          <input class="email-input" type="email" id="emailInput" placeholder="tucorreo@gmail.com" inputmode="email">
+          <button class="email-save-btn" onclick="saveEmail()">Guardar</button>
+        </div>
+      </div>
+      <button class="export-btn email" onclick="sendEmail()">📨 Enviar reporte al correo</button>
+      <p class="export-hint">Abre tu app de correo con el reporte listo. Solo dale "Enviar". El cuerpo del correo incluye el CSV para pegar en Excel.</p>
+    </div>
+
+    <div class="export-card">
+      <div class="export-card-title"><span>📋</span> Copiar para Excel</div>
+      <button class="export-btn" onclick="copyCSV()">Copiar CSV al portapapeles</button>
+      <p class="export-hint">Pega directo en la hoja <strong>Registros</strong> del Excel, columna A, primera fila vacía. Las columnas ya están en el orden correcto — no hay que cambiar nada.</p>
+    </div>
+
+    <div class="instructions">
+      <div class="inst-title">Cómo pegar en Excel</div>
+      <div class="step"><div class="step-num">1</div><div class="step-text">Copia el CSV o reenvíate el correo</div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-text">Abre Excel → hoja <strong>Registros</strong></div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-text">Clic en la <strong>primera fila vacía</strong>, columna A</div></div>
+      <div class="step"><div class="step-num">4</div><div class="step-text">Pega → Excel separa las columnas solo ✓</div></div>
+    </div>
+
+    <div class="export-card">
+      <div class="export-card-title"><span>🗑</span> Limpiar memoria</div>
+      <button class="export-btn danger-btn" onclick="openClearModal()">Borrar todos los registros guardados</button>
+      <p class="export-hint">Borra los registros del teléfono. Úsalo después de exportar al Excel para empezar fresco.</p>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="clearModal" onclick="closeClearModal(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">¿Borrar registros?</div>
+    <div class="modal-sub">Asegúrate de haber copiado el CSV o enviado el correo antes de borrar.</div>
+    <div class="modal-stats">
+      <div><div class="stat-label">Registros</div><div class="stat-val" id="modalCount">0</div></div>
+      <div><div class="stat-label">Total egresos</div><div class="stat-val" id="modalTotal">$0</div></div>
+    </div>
+    <button class="modal-btn confirm" onclick="confirmClear()">Sí, borrar todo</button>
+    <button class="modal-btn cancel" onclick="closeClearModal()">Cancelar</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY='gastos2026_v2', EMAIL_KEY='gastos2026_email';
+let records=[], currentTipo='Egreso';
+
+const CATS={
+  Egreso:['Servicios','Gastos','Ahorro/Inversión','Hogar','Entretenimineto',
+          'Mercado','Transporte','Cuentas','Otro ','Arriendo','Abono capital Creditos'],
+  Ingreso:['Sueldo','Otro']
+};
+const CAT_EMOJI={'Entretenimineto':'🎉','Transporte':'🚗','Mercado':'🛒','Servicios':'💡',
+  'Hogar':'🏠','Arriendo':'🏘','Ahorro/Inversión':'💰','Gastos':'📝',
+  'Abono capital Creditos':'💳','Cuentas':'🔄','Otro ':'📦','Otro':'📦','Sueldo':'💵'};
+const MES_NAMES=['January','February','March','April','May','June',
+                 'July','August','September','October','November','December'];
+
+function init(){
+  try{records=JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]')}catch(e){records=[]}
+  document.getElementById('fFecha').value=new Date().toISOString().slice(0,10);
+  document.getElementById('filterMes').value=String(new Date().getMonth()+1).padStart(2,'0');
+  const em=localStorage.getItem(EMAIL_KEY)||'';
+  if(em) document.getElementById('emailInput').value=em;
+  buildCatOptions(); updateBadge(); renderRecords();
+}
+
+function switchTab(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.add('hidden'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.remove('hidden');
+  document.querySelectorAll('.tab')[{form:0,records:1,export:2}[name]].classList.add('active');
+  if(name==='records') renderRecords();
+}
+
+function setTipo(tipo){
+  currentTipo=tipo;
+  document.getElementById('btnEgreso').className='type-btn'+(tipo==='Egreso'?' active-egreso':'');
+  document.getElementById('btnIngreso').className='type-btn'+(tipo==='Ingreso'?' active-ingreso':'');
+  buildCatOptions();
+  document.getElementById('fCategoria').value='';
+  document.getElementById('subcatField').style.display='none';
+  clearPills();
+}
+
+function buildCatOptions(){
+  const sel=document.getElementById('fCategoria');
+  sel.innerHTML='<option value="">— elegir —</option>';
+  CATS[currentTipo].forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o)});
+}
+
+function onCatChange(){
+  const cat=document.getElementById('fCategoria').value;
+  document.getElementById('subcatField').style.display=(cat==='Entretenimineto')?'block':'none';
+  if(cat!=='Entretenimineto') clearPills();
+}
+
+function setPill(el,v){
+  document.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('fSubcat').value=v;
+}
+function clearPills(){
+  document.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
+  document.getElementById('fSubcat').value='';
+}
+
+function guardarRegistro(){
+  const monto=parseFloat(document.getElementById('fMonto').value);
+  const fecha=document.getElementById('fFecha').value;
+  const cat=document.getElementById('fCategoria').value;
+  const lugar=document.getElementById('fLugar').value;
+  const conc=document.getElementById('fConcepto').value.trim();
+  if(!monto||monto<=0){showToast('⚠️ Ingresa un monto');return}
+  if(!fecha){showToast('⚠️ Elige una fecha');return}
+  if(!cat){showToast('⚠️ Elige categoría');return}
+  if(!lugar){showToast('⚠️ Elige el bolsillo');return}
+  if(!conc){showToast('⚠️ Escribe el concepto');return}
+  const mes=MES_NAMES[new Date(fecha+'T12:00:00').getMonth()];
+  records.unshift({id:Date.now(),fecha,mes,tipo:currentTipo,
+    categoria:cat,subcategoria:document.getElementById('fSubcat').value||'',
+    concepto:conc,monto,lugar,notas:document.getElementById('fNotas').value.trim()});
+  save();
+  showToast('✓ Guardado — '+formatCOP(monto));
+  updateBadge();
+  document.getElementById('fMonto').value='';
+  document.getElementById('fConcepto').value='';
+  document.getElementById('fNotas').value='';
+  document.getElementById('fCategoria').value='';
+  document.getElementById('fSubcat').value='';
+  document.getElementById('subcatField').style.display='none';
+  clearPills();
+}
+
+function renderRecords(){
+  const f=document.getElementById('filterMes').value;
+  const filtered=f?records.filter(r=>r.fecha&&r.fecha.slice(5,7)===f):records;
+  document.getElementById('totalIngresos').textContent=formatCOP(filtered.filter(r=>r.tipo==='Ingreso').reduce((s,r)=>s+r.monto,0));
+  document.getElementById('totalEgresos').textContent=formatCOP(filtered.filter(r=>r.tipo==='Egreso').reduce((s,r)=>s+r.monto,0));
+  const list=document.getElementById('recordList');
+  if(!filtered.length){
+    list.innerHTML=`<div class="empty-state"><div class="es-icon">📭</div><p>Sin registros${f?' este mes':''}.<br>Usa <strong>+ Nuevo</strong> para agregar.</p></div>`;
+    return;
+  }
+  list.innerHTML=filtered.map(r=>`
+    <div class="record-item">
+      <div class="record-icon ${r.tipo.toLowerCase()}">${CAT_EMOJI[r.categoria]||(r.tipo==='Ingreso'?'📥':'📤')}</div>
+      <div class="record-info">
+        <div class="record-concepto">${r.concepto}</div>
+        <div class="record-meta">${r.categoria}${r.subcategoria?' · '+r.subcategoria:''} · ${r.lugar}</div>
+        <div class="record-meta">${formatDate(r.fecha)}</div>
+      </div>
+      <div class="record-amount ${r.tipo.toLowerCase()}">${r.tipo==='Egreso'?'-':'+'} ${formatCOP(r.monto)}</div>
+      <button class="record-del" onclick="deleteRecord(${r.id})">✕</button>
+    </div>`).join('');
+}
+
+function deleteRecord(id){
+  records=records.filter(r=>r.id!==id);
+  save();updateBadge();renderRecords();
+}
+
+function buildCSV(){
+  return ['Fecha,Mes,Tipo,Categoria,Subcategoria,Concepto,Monto,Lugar,Notas',
+    ...records.map(r=>[r.fecha,r.mes,r.tipo,r.categoria,r.subcategoria||'',
+      `"${r.concepto}"`,r.monto,r.lugar,`"${r.notas||''}"`].join(','))
+  ].join('\n');
+}
+
+function copyCSV(){
+  if(!records.length){showToast('Sin registros para exportar');return}
+  navigator.clipboard.writeText(buildCSV())
+    .then(()=>showToast('✓ CSV copiado — pega en Excel'))
+    .catch(()=>showToast('⚠️ Usa el botón de correo',true));
+}
+
+function saveEmail(){
+  const em=document.getElementById('emailInput').value.trim();
+  if(!em){showToast('⚠️ Escribe tu correo');return}
+  localStorage.setItem(EMAIL_KEY,em);
+  showToast('✓ Correo guardado');
+}
+
+function sendEmail(){
+  if(!records.length){showToast('Sin registros para enviar');return}
+  const em=document.getElementById('emailInput').value.trim();
+  if(!em){showToast('⚠️ Primero guarda tu correo');return}
+  const csv=buildCSV();
+  const total=records.filter(r=>r.tipo==='Egreso').reduce((s,r)=>s+r.monto,0);
+  const mes=new Date().toLocaleString('es',{month:'long',year:'numeric'});
+  const body=[
+    `Reporte de gastos — ${mes}`,
+    `Registros: ${records.length} | Total egresos: ${formatCOP(total)}`,
+    '',
+    '=== DATOS PARA EXCEL (copia desde aquí hasta el final) ===',
+    csv
+  ].join('\n');
+  window.location.href=`mailto:${em}?subject=${encodeURIComponent('Gastos '+mes+' — '+records.length+' registros')}&body=${encodeURIComponent(body)}`;
+  showToast('📨 Abriendo correo...');
+}
+
+function openClearModal(){
+  if(!records.length){showToast('No hay registros guardados');return}
+  document.getElementById('modalCount').textContent=records.length;
+  document.getElementById('modalTotal').textContent=formatCOP(records.filter(r=>r.tipo==='Egreso').reduce((s,r)=>s+r.monto,0));
+  document.getElementById('clearModal').classList.add('show');
+}
+function closeClearModal(e){
+  if(!e||e.target===document.getElementById('clearModal'))
+    document.getElementById('clearModal').classList.remove('show');
+}
+function confirmClear(){
+  const n=records.length;
+  records=[];save();updateBadge();renderRecords();
+  document.getElementById('clearModal').classList.remove('show');
+  showToast(`🗑 ${n} registros borrados`);
+}
+
+function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify(records))}
+function updateBadge(){
+  document.getElementById('badgeCount').textContent=records.length+' registro'+(records.length!==1?'s':'');
+}
+function formatCOP(n){return '$'+Math.round(n).toLocaleString('es-CO')}
+function formatDate(d){
+  if(!d)return'';
+  const[y,m,day]=d.split('-');
+  return`${parseInt(day)} ${['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'][parseInt(m)-1]} ${y}`;
+}
+function showToast(msg,isError=false){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast'+(isError?' error':'');
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2400);
+}
+
+init();
+</script>
+</body>
+</html>
